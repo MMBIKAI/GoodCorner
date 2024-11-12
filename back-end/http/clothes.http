@@ -1,0 +1,62 @@
+GET http://localhost:3000/clothes
+
+###
+
+GET http://localhost:3000/clothes?title=adidas
+
+###
+
+GET http://localhost:3000/clothes?category=Men
+
+###
+
+GET http://localhost:3000/clothes/15
+
+###
+
+POST http://localhost:3000/clothes
+Content-Type: application/json
+
+{
+    "title": "Black T_shirt",
+    "description": "A stylish blue denim jacket for casual wear.",
+    "owner": "jacket.seller@example.com",
+    "price": 85.99,
+    "picture": "https://example.com/images/denim_jacket.jpg",
+    "location": "Bordeaux",
+    "createdAt": "2024-09-29T10:00:00Z",
+    "categoryId": 1,
+    "tags": [{"id":1},{"id":2}]
+}
+
+###
+
+POST http://localhost:3000/clothes
+Content-Type: application/json
+
+{
+    "title": "Black T_shirt CELIO",
+    "description": "A stylish blue denim jacket for casual wear.",
+    "owner": "jacket.seller@example.com",
+    "price": 85.99,
+    "pictures": [
+      "https://www.trueclassictees.com/cdn/shop/files/4000_BLACK_2.jpg?v=1710264591",
+      "https://tothemountainshuttle.com/wp-content/uploads/2023/08/unisex-organic-t-shirt-black-back-64de96036ebb2.jpg"
+    ],
+    "location": "Bordeaux",
+    "createdAt": "2024-09-29T10:00:00Z",
+    "categoryId": 1,
+    "tags": [{"id":1},{"id":2}]
+}
+
+###
+DELETE http://localhost:3000/clothes/7
+
+###
+
+PUT http://localhost:3000/clothes/5
+Content-Type: application/json
+
+{
+  "tags": [{"id":3}]
+}
