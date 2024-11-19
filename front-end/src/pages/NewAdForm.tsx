@@ -1,244 +1,330 @@
-import axios from "axios";
-import { Fragment, useEffect, useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form"; // Import useForm from react-hook-form
-import { category } from "../components/Header"; // Ensure this import is correct
-import { Inputs } from "./NewCategoryAdd"; // Import your type correctly
-import { useNavigate } from "react-router-dom";
+import { Fragment } from "react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { ErrorMessage } from "@hookform/error-message";
+import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
+import { useMutation } from "@apollo/client";
+import { ADD_NEW_CLOTHING } from "../graphql/mutations";
+import { Tag, useGetCategoriesQuery, useGetclothingQuery, useGetTagsQuery } from "../generated/graphql-types";
 
-type FormData = {
+type Inputs = {
   title: string;
   description: string;
   owner: string;
-  price: number;
-  picture: string;
+  price: string;
+//   picturesUrls: string[];
+  pictures: { url: string}[],
   location: string;
-  createdAt: Date;
+  createdAt: string;
   category: number;
-  tags: number[];
+  tags: string[];
 };
 
-type Tags = {
-  id: number;
-  name: string;
-};
-
-const NewADForm = () => {
+const NewAdFormPage = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<category[]>([]);
-  const [tags, setTags] = useState<Tags[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]); // State to manage selected tag IDs
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const result = await axios.get("http://localhost:3000/categories");
-        setCategories(result.data);
-      } catch (err) {
-        console.log("err", err);
-      }
-    };
-    const fetchTags = async () => {
-      try {
-        const result = await axios.get("http://localhost:3000/tags");
-        setTags(result.data);
-      } catch (err) {
-        console.log("err", err);
-      }
-    };
-    fetchTags();
-    fetchCategories();
-  }, []);
+  const { error: categoryError, loading: categoryLoading, data: categoryData } = useGetCategoriesQuery();
+  const { error: tagsError, loading: tagsLoading, data: tagsData } = useGetTagsQuery();
+  const [createNewAd] = useMutation(ADD_NEW_CLOTHING);
+  const { refetch: refetchAds } = useGetclothingQuery(); // Query to refresh ads
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
-  } = useForm<FormData>({ criteriaMode: "all" });
+  } = useForm<Inputs>({
+    criteriaMode: "all",
+    defaultValues: {
+      category: 1,
+      title: "default title",
+      description: "default description",
+      createdAt: "23/11/2023",
+    //   picturesUrls: [
+    //     "https://www.prioritybicycles.com/cdn/shop/files/600_hero_May2024_1of1.jpg",
+    //   ],
+    pictures: [
+        { url: "https://www.prioritybicycles.com/cdn/shop/files/600_hero_May2024_1of1.jpg"}
+      ],
+      location: "default location",
+      owner: "John Doe",
+      price: "100",
+      tags: []
+    },
+  });
 
-  // Handle form submission
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
-    // Transform selected tag IDs into objects expected by the backend
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "pictures",
+  });
+
+  const onSubmit: SubmitHandler<Inputs> = async (data) => {
+    console.log("data from react hook form", data);
     const dataForBackend = {
       ...data,
-      tags: selectedTags.map((tagId) => {
-        const tag = tags.find((tag) => tag.id === tagId);
-        return { id: tag?.id, name: tag?.name };
-      }),
+      price: parseInt(data.price),
+      createdAt: data.createdAt + "T00:00:00.000Z",
+      //picturesUrls: data.pictures,
+      tags: data.tags ? data.tags.map((el) => ({ id: parseInt(el) })) : [],
     };
 
-    console.log("Formatted Data for Backend:", dataForBackend);
+    console.log("data for backend", dataForBackend);
 
     try {
-      await axios.post("http://localhost:3000/clothes", dataForBackend);
+      await createNewAd({ variables: { data: dataForBackend } });
       toast.success("Ad has been added");
+      await refetchAds();
       navigate("/");
     } catch (error) {
-      console.error("Error submitting ad:", error);
-      toast.error("Failed to add ad");
+      toast.error("Error creating ad");
     }
   };
 
-  // Handle checkbox change for tags
-  const handleTagChange = (id: number) => {
-    setSelectedTags((prevSelectedTags) =>
-      prevSelectedTags.includes(id)
-        ? prevSelectedTags.filter((tagId) => tagId !== id)
-        : [...prevSelectedTags, id]
-    );
-  };
+  if (categoryLoading || tagsLoading) return <p>Loading...</p>;
+  if (categoryError || tagsError) return <p>Error : {categoryError?.message || tagsError?.message}</p>;
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <label>
-        Titre de l'annonce:
-        <br />
-        <input
-          className="text-field"
-          {...register("title", {
-            minLength: { value: 2, message: "Minimum 2 characters" },
-            required: "This field is required",
-          })}
-        />
-        {errors.title && (
-          <span className="error-message">{errors.title.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Description:
-        <br />
-        <input
-          className="text-field"
-          {...register("description", {
-            minLength: { value: 10, message: "Minimum 10 characters" },
-            required: "This field is required",
-          })}
-        />
-        {errors.description && (
-          <span className="error-message">{errors.description.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Vendeur:
-        <br />
-        <input
-          className="text-field"
-          {...register("owner", {
-            minLength: { value: 2, message: "Minimum 2 characters" },
-            required: "This field is required",
-          })}
-        />
-        {errors.owner && (
-          <span className="error-message">{errors.owner.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Prix:
-        <br />
-        <input
-          type="number"
-          className="text-field"
-          {...register("price", {
-            min: { value: 0, message: "Minimum price is 0" },
-            required: "This field is required",
-          })}
-        />
-        {errors.price && (
-          <span className="error-message">{errors.price.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Image URL:
-        <br />
-        <input
-          className="text-field"
-          {...register("picture", {
-            required: "This field is required",
-          })}
-        />
-        {errors.picture && (
-          <span className="error-message">{errors.picture.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Ville:
-        <br />
-        <input
-          className="text-field"
-          {...register("location", {
-            minLength: { value: 2, message: "Minimum 2 characters" },
-            required: "This field is required",
-          })}
-        />
-        {errors.location && (
-          <span className="error-message">{errors.location.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Date:
-        <br />
-        <input
-          type="date"
-          className="text-field"
-          {...register("createdAt", {
-            required: "This field is required",
-          })}
-        />
-        {errors.createdAt && (
-          <span className="error-message">{errors.createdAt.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>
-        Category:
-        <br />
-        <select
-          {...register("category", { required: "Please select a category" })}
-        >
-          {categories.map((el) => (
-            <option key={el.id} value={el.id}>
-              {el.name}
-            </option>
-          ))}
-        </select>
-        {errors.category && (
-          <span className="error-message">{errors.category.message}</span>
-        )}
-      </label>
-      <br />
-
-      <label>Tags:</label>
-      <br />
-      {tags.map((tag) => (
-        <Fragment key={tag.id}>
+    return (
+      <>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          {/* Title */}
           <label>
+            Titre de l'annonce:
+            <br />
             <input
-              type="checkbox"
-              value={tag.id}
-              onChange={() => handleTagChange(tag.id)} // Use the checkbox handler
+              className="text-field"
+              {...register("title", {
+                minLength: { value: 2, message: "Minimum 2 characters" },
+                required: "This field is required",
+              })}
             />
-            {tag.name}
           </label>
+          <ErrorMessage
+            errors={errors}
+            name="title"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
           <br />
-        </Fragment>
-      ))}
-
-      <input type="submit" className="button" value="Submit Ad" />
-    </form>
-  );
+  
+          {/* Description */}
+          <label>
+            Description:
+            <br />
+            <input
+              className="text-field"
+              {...register("description", {
+                minLength: { value: 10, message: "Minimum 10 characters" },
+                required: "This field is required",
+              })}
+            />
+          </label>
+          <ErrorMessage
+            errors={errors}
+            name="description"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
+          <br />
+  
+          {/* Owner */}
+          <label>
+            Vendeur:
+            <br />
+            <input
+              className="text-field"
+              {...register("owner", {
+                minLength: { value: 2, message: "Minimum 2 characters" },
+                required: "This field is required",
+              })}
+            />
+          </label>
+          <ErrorMessage
+            errors={errors}
+            name="owner"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
+          <br />
+  
+          {/* Price */}
+          <label>
+            Prix :
+            <br />
+            <input
+              type="number"
+              className="text-field"
+              {...register("price", {
+                min: { value: 0, message: "Minimum 0" },
+                required: "This field is required",
+              })}
+            />
+          </label>
+          <ErrorMessage
+            errors={errors}
+            name="price"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
+          <br />
+  
+          {/* Pictures URLs */}
+          <>
+          <button
+                className="button"
+                type="button"
+                onClick={() => append({ url: "" })}
+              >
+                Add Image
+              </button>
+              <br />
+              <div className="field">
+                {fields.map((field, index) => {
+                  return (
+                    <div key={field.id}>
+                      <section className="image-input-and-remove">
+                        <input
+                          className="text-field"
+                          placeholder="Your image url"
+                          {...register(`pictures.${index}.url` as const)}
+                        />
+                        <button className="button" onClick={() => remove(index)}>
+                          Remove
+                        </button>
+                        <br />
+                      </section>
+                      <span>{errors.pictures?.[index]?.url?.message}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+            <br />
+  
+  
+          {/* Location */}
+          <label>
+            Ville :
+            <br />
+            <input
+              className="text-field"
+              {...register("location", {
+                minLength: { value: 2, message: "Minimum 2 characters" },
+                required: "This field is required",
+              })}
+            />
+          </label>
+          <ErrorMessage
+            errors={errors}
+            name="location"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
+          <br />
+  
+          {/* Date */}
+          <label>
+            Date :
+            <br />
+            <input
+              type="date"
+              className="text-field"
+              {...register("createdAt", {
+                required: "This field is required",
+              })}
+            />
+          </label>
+          <ErrorMessage
+            errors={errors}
+            name="createdAt"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
+          <br />
+  
+          {/* Category */}
+          <label>
+          <br />
+          Category :
+          <br />
+          <select {...register("category")}>
+              {categoryData?.getAllCategories.map((el: { id: number; name: string }) => (
+              <option key={el.id} value={el.id}>
+                  {el.name} {/* Change title to name here */}
+              </option>
+              ))}
+          </select>
+          </label>
+          <ErrorMessage
+            errors={errors}
+            name="category"
+            render={({ messages }) =>
+              messages &&
+              Object.entries(messages).map(([type, message]) => (
+                <Fragment key={type}>
+                  <br />
+                  <span className="error-message">{message}</span>
+                </Fragment>
+              ))
+            }
+          />
+          <br />
+  
+          {/* Tags */}
+          {tagsData?.getAlltags.map((tag: Tag) => (
+            <label key={tag.id}>
+              <input type="checkbox" value={tag.id} {...register("tags")} />
+              {tag.name}
+            </label>
+          ))}
+          <br />
+  
+          <input type="submit" className="button" />
+        </form>
+      </>
+    );
+  
+  
 };
 
-export default NewADForm;
+export default NewAdFormPage;

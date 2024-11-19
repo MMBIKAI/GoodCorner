@@ -1,29 +1,56 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // <-- Import useNavigate
-import { AdCardProps } from "../components/AdCard";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, gql, useMutation } from "@apollo/client";
+import { GET_AD_DETAILS } from "../graphql/queries";
+import { DELETE_CLOTHE_BY_ID } from "../graphql/mutations";
+
+
+// Define the GraphQL query to fetch ad details by id
+
+
+
+
+type Picture = {
+  id: number;  // or 'number', depending on your data
+  url: string;
+};
 
 const AdDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate(); // <-- Initialize the navigate hook
-  const [adDetails, setDetails] = useState<AdCardProps>();
+  const { id } = useParams(); // Get the id from the URL params
+  const navigate = useNavigate(); // Initialize the navigate hook
 
-  useEffect(() => {
-    const fetchAddDetails = async () => {
-      const result = await axios.get(`http://localhost:3000/clothes/${id}`);
-      setDetails(result.data);
-    };
-    fetchAddDetails();
-  }, [id]);
+  // Use Apollo Client's useQuery hook to fetch the ad details
+  const { data, loading, error } = useQuery(GET_AD_DETAILS, {
+    variables: { getClothesByIdId: parseFloat(id!) }, // Pass the ad id as a variable, converted to a number
+  });
 
+  // Apollo `useMutation` hook to delete an ad by its ID
+  const [deleteClotheById] = useMutation(DELETE_CLOTHE_BY_ID);
+
+  // Handle loading and error states
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  // Extract ad details from the query result
+  const adDetails = data?.getClothesById;
+
+  // Handle delete action
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:3000/clothes/${id}`); // Send DELETE request
-      alert("Annonce supprimée avec succès !");
-      // Optionally, redirect or update the interface after deletion
+      // Execute the delete mutation with the specified ad ID
+      const { data } = await deleteClotheById({
+        variables: { idDelete: parseFloat(id!) },
+      });
+
+      // If deletion was successful, display a success message
+      if (data.deleteClotheById) {
+        alert("Ad deleted successfully!");
+        navigate("/"); // Optionally redirect to the ads list after deletion
+      } else {
+        alert("Failed to delete the ad.");
+      }
     } catch (error) {
-      console.error("Erreur lors de la suppression de l'annonce :", error);
-      alert("Erreur lors de la suppression de l'annonce.");
+      console.error("Error deleting ad:", error);
+      alert("Failed to delete the ad.");
     }
   };
 
@@ -33,18 +60,22 @@ const AdDetails = () => {
       <h2 className="ad-details-title">{adDetails?.title}</h2>
       <section className="ad-details">
         <div className="ad-details-image-container">
-          <img
-            className="ad-details-image"
-            src={adDetails?.picture}
-            alt={adDetails?.title}
-          />
+          {/* Map over the pictures array to display all images */}
+          {adDetails?.pictures?.map((picture: Picture) => (
+            <img
+              key={picture.id}
+              className="ad-details-image"
+              src={picture.url} // Use the picture URL
+              alt={adDetails?.title} // Alt text for accessibility
+            />
+          ))}
         </div>
         <div className="ad-details-info">
           <div className="ad-details-price">{adDetails?.price} €</div>
           <div className="ad-details-description">{adDetails?.description}</div>
           <hr className="separator" />
           <div className="ad-details-owner">
-            Annoncée publiée par <b>{adDetails?.owner}</b>
+            Annonce publiée par <b>{adDetails?.owner}</b>
             {"   "}{" "}
             {adDetails?.createdAt
               ? new Date(adDetails.createdAt).toDateString()
@@ -70,7 +101,7 @@ const AdDetails = () => {
           </a>
           <button
             className="button button-primary"
-            onClick={() => navigate(`/ad/modify/${id}`)} // <-- Navigate to the modification page
+            onClick={() => navigate(`/ad/modify/${id}`)} // Navigate to the modification page
           >
             Modify Ad
           </button>

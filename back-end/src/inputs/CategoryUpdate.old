@@ -1,0 +1,13 @@
+import { Field, InputType } from "type-graphql";
+import { Category } from "../entities/categories";
+
+@InputType()
+class CategoryUpdate implements Partial<Category> {
+    @Field()
+    id?: number;
+
+    @Field({ nullable: true })  // Make name nullable
+    name?: string;
+}
+
+export default CategoryUpdate;

@@ -1,27 +1,25 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { gql, useQuery } from "@apollo/client"; // Apollo hook to use GraphQL queries
+import { GET_CATEGORIES } from "../graphql/queries";
 
-export type category = {
+// Step 1: Define the Category type
+export type Category = {
   id: number;
   name: string;
 };
 
-const header = () => {
+const Header = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState([] as category[]);
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const result = await axios.get("http://localhost:3000/categories");
-        console.log("result", result);
-        setCategories(result.data);
-      } catch (err) {
-        console.log("err", err);
-      }
-    };
-    fetchCategories();
-  }, []);
+
+  // Apollo GraphQL query to fetch categories
+  
+
+  // Step 2: Use Apollo hook to fetch data
+  const { loading, error, data } = useQuery(GET_CATEGORIES);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
   return (
     <header className="header">
       <div className="main-menu">
@@ -36,7 +34,6 @@ const header = () => {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form as HTMLFormElement);
-
             const formJson = Object.fromEntries(formData.entries());
             console.log("Form JSON:", formJson);
             if (formJson.keyword) {
@@ -74,17 +71,19 @@ const header = () => {
         </Link>
       </div>
       <nav className="categories-navigation">
-        {categories.map((el) => (
+        {data?.getAllCategories.map((category: Category) => (
           <Link
-            key={el.id}
-            to={`/ad/category/${el.name}`} // Make sure this refers to the category name or id
+            key={category.id}
+            to={`/ad/category/${category.name}`} // Make sure this refers to the category name or id
             className="category-navigation-link"
           >
-            {el.name}
+            {category.name}
           </Link>
         ))}
       </nav>
     </header>
   );
 };
-export default header;
+
+export default Header;
+

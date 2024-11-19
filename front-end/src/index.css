@@ -237,3 +237,26 @@ h1 {
   background-color: lightgray;
   border: none;
 }
+
+.slick-slider {
+  max-width: 100%;  /* Ensure the slider is responsive */
+  margin: 0 auto;   /* Center it horizontally */
+}
+
+.slick-slide {
+  display: flex;
+  justify-content: center;  /* Center images inside the slide */
+  align-items: center;
+}
+
+.slick-prev, .slick-next {
+  font-size: 30px;  /* Adjust arrow size */
+  color: #fff;      /* Set arrow color */
+  z-index: 1;
+}
+
+.slick-dots li button:before {
+  color: #fff;  /* Style the dots */
+  font-size: 12px;
+}
+

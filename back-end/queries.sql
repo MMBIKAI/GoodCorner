@@ -124,3 +124,8 @@ VALUES
   ("Girls' Swimwear", "Cute and comfortable swimwear for girls. Perfect for beach days.", "swimwear.seller@gmail.com", 22, "Lyon", "2023-10-02T10:21:22.474Z", 2),
   ("Boys' Athletic Shoes", "Lightweight athletic shoes for boys. Ideal for sports and outdoor activities.", "athletic.seller@gmail.com", 45, "Paris", "2023-10-03T10:22:23.584Z", 1);
 
+DELETE FROM picture;
+
+DELETE FROM clothes_tags_tag
+WHERE clothesId = 21;
+

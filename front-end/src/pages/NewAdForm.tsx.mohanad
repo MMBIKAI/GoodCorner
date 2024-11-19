@@ -1,0 +1,326 @@
+import { useState } from "react";
+import { SubmitHandler, useForm, useFieldArray } from "react-hook-form";
+//import { Category } from "../components/Header";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useQuery, useMutation } from "@apollo/client";
+import { GET_ALL_CLOTHES, GET_CATEGORIES, GET_TAGS } from "../graphql/queries";
+import { ADD_NEW_CLOTHING } from "../graphql/mutations";
+import { Category, Tag, useGetCategoriesQuery, useGetTagsQuery } from "../generated/graphql-types";
+
+// Define the GraphQL query to fetch all ads (clothes) with necessary fields
+
+
+// GraphQL Mutation to add new clothing item
+
+
+// GraphQL query to fetch categories
+
+
+// GraphQL query to fetch tags
+
+
+
+// Type definitions for the form data and tags
+type FormData = {
+  title: string;
+  description: string;
+  owner: string;
+  price: number;
+  pictures: string[]; // Handle multiple picture URLs
+  location: string;
+  createdAt: Date;
+  category: number;
+  //tags: number[]; // Array for tags to be selected by the user
+  tags: string[]
+};
+
+//type Tags = {
+//  id: number;
+//  name: string;
+//};
+
+const NewADForm = () => {
+  const navigate = useNavigate();
+
+  // Fetch categories and tags using GraphQL queries
+  //const { loading: categoriesLoading, error: categoriesError, data: categoriesData } = useQuery(GET_CATEGORIES);
+  const { loading: categoriesLoading, error: categoriesError, data: categoriesData } = useGetCategoriesQuery();
+  //const { loading: tagsLoading, error: tagsError, data: tagsData } = useQuery(GET_TAGS);
+  const { loading: tagsLoading, error: tagsError, data: tagsData } = useGetTagsQuery();
+    // Apollo `useQuery` hook to fetch ads data and handle loading and error states
+    const { refetch } = useQuery(GET_ALL_CLOTHES);
+
+  // Mutation function to create a new clothing item
+  const [createNewClothing] = useMutation(ADD_NEW_CLOTHING);
+
+  // Handle form validation using react-hook-form
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<FormData>({ 
+    criteriaMode: "all",
+    defaultValues: {
+      title: "Default Clothing Title",
+      description: "This is a default description for the clothing item.",
+      owner: "Default Owner",
+      price: 50,
+      location: "Default Location",
+      createdAt: new Date(),
+      category: 1, // Assuming category with ID 1 exists
+      pictures: ["https://assets.adidas.com/images/w_600,f_auto,q_auto/edad624afcc54209b01faf12008f12f6_9366/T-shirt_3_bandes_Adicolor_Classics_Bleu_IA4850_01_laydown.jpg",
+                "https://actionwear.dz/media/catalog/product/cache/16811254af8cba6589bcb2b988448e5d/t/-/t-shirt_adicolor_classics_3-stripes_bleu_he9545_21_model.jpg"
+                 ], // Example picture URL
+       //pictures: [{ url: "https://assets.adidas.com/images/w_600,f_auto,q_auto/edad624afcc54209b01faf12008f12f6_9366/T-shirt_3_bandes_Adicolor_Classics_Bleu_IA4850_01_laydown.jpg" }], // Default picture URL
+    },
+  });
+
+
+  //const { fields, append, remove } = useFieldArray({
+  //  control,
+  //  name: "pictures",
+  //});
+
+  // State to track selected tags
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+
+  // Handle checkbox changes for tags
+  const handleTagChange = (tagId: number) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
+  };
+
+  const onSubmit: SubmitHandler<FormData> = async (formData) => {
+    try {
+      console.log("Selected Tags:", selectedTags); // Log selected tags before submission
+       // Remove duplicates from selected tags
+      const uniqueTags = [...new Set(selectedTags)];
+      
+      // Log the raw form data
+      console.log("Raw form data:", formData);
+  
+      // Prepare the data to include the selected tags and format the date
+      const newData = {
+        ...formData,
+        tags: uniqueTags ? uniqueTags : [],
+        createdAt: formData.createdAt + "T00:00:00.000Z", // Format date to string
+      };
+  
+      // Log the transformed data before sending it to the server
+      console.log("Transformed data for mutation:", newData);
+  
+      // Call the mutation to create the new clothing item
+      const result = await createNewClothing({ variables: { data: newData } });
+  
+      // Log the server response
+      console.log("Server response:", result);
+  
+      toast.success("Ad has been added"); // Show success message
+
+      // Trigger refetch of the RecentAds data
+      await refetch();
+
+      navigate("/"); // Navigate back to the home page
+    } catch (error) {
+      // Log the error if the mutation fails
+      console.error("Error during mutation:", error);
+      toast.error("Error adding ad"); // Show error message
+    }
+  };
+  
+  // Check if categories and tags are loaded correctly
+  if (categoriesLoading || tagsLoading) {
+    console.log("Loading categories or tags...");
+    return <p>Loading...</p>;
+  }
+  
+  if (categoriesError || tagsError) {
+    console.error("Error loading categories or tags:", categoriesError || tagsError);
+    return <p>Error loading categories/tags!</p>;
+  }
+  
+  // Log categories and tags data to confirm they are being fetched
+  console.log("Fetched categories:", categoriesData?.getAllCategories);
+  console.log("Fetched tags:", tagsData?.getAlltags);
+  
+  // Get categories and tags from the GraphQL query result
+  const categories = categoriesData?.getAllCategories;
+  const tags = tagsData?.getAlltags;
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* Title Field */}
+      <label>
+        Titre de l'annonce:
+        <br />
+        <input
+          className="text-field"
+          id = "titleinputbox"
+          {...register("title", {
+            minLength: { value: 2, message: "Minimum 2 characters" },
+            required: "This field is required",
+          })}
+        />
+        {errors.title && <span className="error-message">{errors.title.message}</span>}
+      </label>
+      <br />
+
+      {/* Description Field */}
+      <label>
+        Description:
+        <br />
+        <input
+          className="text-field"
+          id="descriptioninputbox"
+          {...register("description", {
+            minLength: { value: 10, message: "Minimum 10 characters" },
+            required: "This field is required",
+          })}
+        />
+        {errors.description && <span className="error-message">{errors.description.message}</span>}
+      </label>
+      <br />
+
+      {/* Owner Field */}
+      <label>
+        Vendeur:
+        <br />
+        <input
+          className="text-field"
+          id="ownerinputbox"
+          {...register("owner", {
+            minLength: { value: 2, message: "Minimum 2 characters" },
+            required: "This field is required",
+          })}
+        />
+        {errors.owner && <span className="error-message">{errors.owner.message}</span>}
+      </label>
+      <br />
+
+      {/* Price Field */}
+      <label>
+        Prix:
+        <br />
+        <input
+          type="number"
+          className="text-field"
+          id ="priceinputbox"
+          {...register("price", {
+            min: { value: 0, message: "Minimum price is 0" },
+            required: "This field is required",
+            valueAsNumber: true, // Ensure the value is a number
+          })}
+        />
+        {errors.price && <span className="error-message">{errors.price.message}</span>}
+      </label>
+      <br />
+
+      {/* Picture Field */}
+      <label>
+        Image URLs (multiple):
+        <input
+          type="text"
+          id="pictureinputbox"
+          className="text-field"
+          {...register("pictures", { required: "This field is required" })}
+        />
+        {errors.pictures && <span className="error-message">{errors.pictures.message}</span>}
+      </label>
+      <br />
+      {/* Pictures Management */}
+     {/* <label>Image URLs:</label>
+      <div>
+        {fields.map((field, index) => (
+          <div key={field.id}>
+            <input
+              {...register(`pictures.${index}` as const)}
+              placeholder="Picture URL"
+            />
+            <button type="button" onClick={() => remove(index)}>Remove</button>
+          </div>
+        ))}
+        <button type="button" onClick={() => append("")}>Add Picture</button>
+      </div>
+      <br />
+
+      {/* Location Field */}
+      <label>
+        Ville:
+        <br />
+        <input
+          className="text-field"
+          id="locationinputbox"
+          {...register("location", {
+            minLength: { value: 2, message: "Minimum 2 characters" },
+            required: "This field is required",
+          })}
+        />
+        {errors.location && <span className="error-message">{errors.location.message}</span>}
+      </label>
+      <br />
+
+      {/* CreatedAt Field */}
+      <label>
+        Date:
+        <br />
+        <input
+          type="date"
+          className="text-field"
+          id="createAtinputbox"
+          {...register("createdAt", { required: "This field is required" })}
+        />
+        {errors.createdAt && <span className="error-message">{errors.createdAt.message}</span>}
+      </label>
+      <br />
+
+      {/* Category Dropdown */}
+      <label>
+        Category:
+        <br />
+        <select id="categorydropdown" {...register("category", { required: "Please select a category" })}>
+          {categories?.map((el: Category) => (
+            <option key={el.id} value={el.id}>
+              {el.name}
+            </option>
+          ))}
+        </select>
+        {errors.category && <span className="error-message">{errors.category.message}</span>}
+      </label>
+      <br />
+
+      {/* Tags Selection */}
+        <div>
+          <span>Tags:</span>
+          <br />
+          {/*{tags?.map((tag: Tag) => (
+            <div key={tag.id} style={{ marginBottom: "8px" }}>
+              <label>
+                <input
+                  type="checkbox"
+                  value={tag.id}
+                  id={`tag-checkbox-${tag.id}`} // Unique id for each checkbox
+                  onChange={() => handleTagChange(tag.id)} // Manage checkbox state
+                />
+                {tag.name}
+              </label>
+            </div>
+          ))}*/}
+          {tags?.map((tag) => (
+            <label key={tag.id}>
+              <input type="checkbox" value={tag.id} {...register("tags")} />
+            </label>
+          ))}
+        </div>
+
+
+      {/* Submit Button */}
+      <input type="submit" className="button" value="Submit Ad" />
+    </form>
+  );
+};
+
+export default NewADForm;
+

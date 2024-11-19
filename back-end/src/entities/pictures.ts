@@ -4,20 +4,23 @@ import {
   Column,
   ManyToOne,
   BaseEntity,
-  ManyToMany,
-  JoinTable,
-  OneToMany,
 } from "typeorm";
 import { Clothes } from "./clothes";
+import { Field, ObjectType } from "type-graphql";
 
+@ObjectType()
 @Entity()
 export class Picture extends BaseEntity {
+  @Field()
   @PrimaryGeneratedColumn()
-  id?: number;
+  id!: number;
 
+  @Field()
   @Column({ nullable: false })
   url?: string;
 
-  @ManyToOne(() => Clothes, (cl) => cl.pictures, { eager: true }) //eager: to get the category with the other properties, when get the details of the ad
+  //@Field(() => Clothes, { nullable: true }) // Allows the clothes property to be nullable in the schema
+  @ManyToOne(() => Clothes, (clothes) => clothes.pictures, {onDelete: "CASCADE"})
   clothes?: Clothes;
 }
+
